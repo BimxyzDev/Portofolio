@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🚨 Sistem Terkunci</title>
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      background: black;
+      color: lime;
+      font-family: monospace;
+      text-align: center;
+      padding: 50px;
+    }
+    input {
+      padding: 10px;
+      font-size: 18px;
+      margin-top: 20px;
+      border: none;
+      border-radius: 5px;
+      background: #111;
+      color: lime;
+      outline: none;
+    }
+    input:disabled {
+      background: #333;
+    }
+    audio {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚨 Sistem Dikunci</h1>
+  <p id="info">Tunggu 15 detik atau masukkan kode rahasia untuk membuka...</p>
+  <input type="text" id="kode" placeholder="Masukkan kode rahasia" autofocus />
+
+  <!-- Audio Sirine -->
+  <audio id="sirine" loop>
+    <source src="https://www.soundjay.com/misc/sounds/emergency-buzzer-1.mp3" type="audio/mpeg" />
+  </audio>
+
+  <script>
+    let isLocked = true;
+    let timer = 15;
+    const kodeRahasia = "bimxyz"; // Ganti kode rahasia disini
+    const kodeInput = document.getElementById("kode");
+    const info = document.getElementById("info");
+    const sirine = document.getElementById("sirine");
+
+    // Cegah klik kanan
+    document.addEventListener('contextmenu', e => {
+      if (isLocked) e.preventDefault();
+    });
+
+    // Cegah tombol keyboard kecuali input
+    document.addEventListener('keydown', e => {
+      if (isLocked && e.target !== kodeInput) {
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    // Cegah tombol back
+    history.pushState(null, "", window.location.href);
+    window.onpopstate = function () {
+      if (isLocked) {
+        history.pushState(null, "", window.location.href);
+      }
+    };
+
+    // Vibrasi berulang tiap 1.5 detik
+    const vibrateInterval = setInterval(() => {
+      if (navigator.vibrate && isLocked) {
+        navigator.vibrate([500]);
+      }
+    }, 1500);
+
+    // Hitung mundur
+    const countdown = setInterval(() => {
+      if (!isLocked) return;
+      if (timer <= 0) {
+        unlock();
+      } else {
+        info.textContent = `Tunggu ${timer} detik atau masukkan kode rahasia...`;
+        timer--;
+      }
+    }, 1000);
+
+    // Input kode
+    kodeInput.addEventListener("input", () => {
+      if (kodeInput.value.trim().toLowerCase() === kodeRahasia.toLowerCase()) {
+        unlock();
+      }
+    });
+
+    // Auto mainkan sirine
+    window.addEventListener("load", () => {
+      setTimeout(() => {
+        sirine.play().catch(() => {
+          // User must interact first (browser rule)
+          info.textContent += " (Tekan enter untuk aktifkan audio)";
+        });
+      }, 500);
+    });
+
+    function unlock() {
+      isLocked = false;
+      clearInterval(countdown);
+      clearInterval(vibrateInterval);
+      sirine.pause();
+      sirine.currentTime = 0;
+
+      document.querySelector("h1").textContent = "✅ Sistem Sudah Dibuka";
+      info.textContent = "Sekarang kamu bisa gunakan browser seperti biasa.";
+      kodeInput.disabled = true;
+    }
+  </script>
+</body>
+  </html>
