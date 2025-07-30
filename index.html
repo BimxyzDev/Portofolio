@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>🚨 Sistem Terkunci</title>
-  <meta charset="UTF-8" />
+  <title>🚨 Sistem Dikunci</title>
+  <meta charset="UTF-8">
   <style>
     body {
       background: black;
@@ -24,58 +24,69 @@
     input:disabled {
       background: #333;
     }
-    audio {
-      display: none;
-    }
   </style>
 </head>
 <body>
-  <h1>🚨 Sistem Dikunci</h1>
+  <h1>🚫 Sistem Terkunci</h1>
   <p id="info">Tunggu 15 detik atau masukkan kode rahasia untuk membuka...</p>
   <input type="text" id="kode" placeholder="Masukkan kode rahasia" autofocus />
 
-  <!-- Audio Sirine -->
+  <!-- Sirine audio -->
   <audio id="sirine" loop>
     <source src="https://www.soundjay.com/misc/sounds/emergency-buzzer-1.mp3" type="audio/mpeg" />
   </audio>
 
   <script>
+    const kodeRahasia = "bima"; // Kode rahasia
     let isLocked = true;
     let timer = 15;
-    const kodeRahasia = "bimxyz"; // Ganti kode rahasia disini
+
     const kodeInput = document.getElementById("kode");
     const info = document.getElementById("info");
     const sirine = document.getElementById("sirine");
 
-    // Cegah klik kanan
-    document.addEventListener('contextmenu', e => {
-      if (isLocked) e.preventDefault();
-    });
+    // 1. Mencegah Reload / Close Tab
+    window.onbeforeunload = function () {
+      if (isLocked) return "Tunggu sistem terbuka!";
+    };
 
-    // Cegah tombol keyboard kecuali input
-    document.addEventListener('keydown', e => {
+    // 2. Mencegah Tombol Keyboard selain input
+    document.addEventListener("keydown", function (e) {
       if (isLocked && e.target !== kodeInput) {
         e.preventDefault();
         return false;
       }
+
+      const blockKey = ["F5", "F1"];
+      if (blockKey.includes(e.key) || (e.ctrlKey && e.key === "r") || (e.altKey && e.key === "ArrowLeft")) {
+        if (isLocked) e.preventDefault();
+      }
     });
 
-    // Cegah tombol back
-    history.pushState(null, "", window.location.href);
+    // 3. Cegah Klik Kanan
+    document.addEventListener("contextmenu", function (e) {
+      if (isLocked) e.preventDefault();
+    });
+
+    // 4. Cegah Back
+    for (let i = 0; i < 10; i++) history.pushState(null, "", window.location.href);
     window.onpopstate = function () {
-      if (isLocked) {
-        history.pushState(null, "", window.location.href);
-      }
+      if (isLocked) history.pushState(null, "", window.location.href);
     };
 
-    // Vibrasi berulang tiap 1.5 detik
+    // 5. Vibrasi loop
     const vibrateInterval = setInterval(() => {
-      if (navigator.vibrate && isLocked) {
-        navigator.vibrate([500]);
-      }
+      if (navigator.vibrate && isLocked) navigator.vibrate([300]);
     }, 1500);
 
-    // Hitung mundur
+    // 6. Sirine
+    setTimeout(() => {
+      sirine.play().catch(() => {
+        info.textContent += " (Tekan apa saja untuk aktifkan audio)";
+      });
+    }, 500);
+
+    // 7. Hitung Mundur
     const countdown = setInterval(() => {
       if (!isLocked) return;
       if (timer <= 0) {
@@ -86,34 +97,34 @@
       }
     }, 1000);
 
-    // Input kode
+    // 8. Input kode rahasia
     kodeInput.addEventListener("input", () => {
       if (kodeInput.value.trim().toLowerCase() === kodeRahasia.toLowerCase()) {
         unlock();
       }
     });
 
-    // Auto mainkan sirine
-    window.addEventListener("load", () => {
-      setTimeout(() => {
-        sirine.play().catch(() => {
-          // User must interact first (browser rule)
-          info.textContent += " (Tekan enter untuk aktifkan audio)";
-        });
-      }, 500);
+    // 9. Fullscreen Otomatis
+    document.addEventListener("DOMContentLoaded", () => {
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      else if (el.msRequestFullscreen) el.msRequestFullscreen();
     });
 
+    // 10. Fungsi Unlock
     function unlock() {
       isLocked = false;
       clearInterval(countdown);
       clearInterval(vibrateInterval);
       sirine.pause();
       sirine.currentTime = 0;
+      window.onbeforeunload = null;
 
       document.querySelector("h1").textContent = "✅ Sistem Sudah Dibuka";
-      info.textContent = "Sekarang kamu bisa gunakan browser seperti biasa.";
+      info.textContent = "Silakan gunakan browser seperti biasa.";
       kodeInput.disabled = true;
     }
   </script>
 </body>
-  </html>
+</html>
