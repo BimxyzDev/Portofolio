@@ -1,127 +1,272 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prank Lock Screen</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Prank Lock (Safe Demo)</title>
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #111;
-    color: white;
-    text-align: center;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
+  :root{
+    --bg:#0b1220;
+    --panel:#0f1724;
+    --accent:#ff7a59;
+    --muted:#aab3c0;
+    --white:#f7fafc;
   }
-  .container {
-    margin-top: 50px;
+  html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Arial;background:var(--bg);color:var(--white)}
+  .content {padding:28px; max-width:900px;margin:40px auto;background:#071022;border-radius:12px;}
+  h1{margin:0 0 8px;font-size:20px}
+  p{color:var(--muted);margin:0 0 16px}
+
+  /* overlay lock */
+  .lock-overlay {
+    position:fixed;
+    inset:0;
+    background:linear-gradient(180deg, rgba(2,6,23,.95), rgba(2,6,23,.98));
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    color:var(--white);
   }
-  h1 {
-    color: #ff4444;
+  .panel {
+    width:92%;
+    max-width:520px;
+    background:linear-gradient(180deg,#071126,#071826);
+    border-radius:12px;
+    padding:18px;
+    box-shadow:0 20px 50px rgba(2,6,23,.6);
+    text-align:center;
   }
-  .keypad {
-    display: grid;
-    grid-template-columns: repeat(3, 80px);
-    gap: 10px;
-    justify-content: center;
-    margin-top: 20px;
-  }
-  .keypad button {
-    background: #333;
-    color: white;
-    font-size: 24px;
-    padding: 15px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  .keypad button:hover {
-    background: #555;
-  }
-  #timer {
-    font-size: 20px;
-    margin-top: 15px;
-    color: #0f0;
-  }
+  .panel h2{margin:0 0 6px}
+  .count {font-weight:800;font-size:36px;margin:8px 0;color:var(--accent)}
+  .sub {color:var(--muted);font-size:14px;margin-bottom:14px}
+  .keypad {display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+  .key {padding:14px 0;border-radius:8px;background:#071b2a;border:1px solid rgba(255,255,255,.03);cursor:pointer;font-size:18px}
+  .key:active{transform:translateY(1px)}
+  .actions {display:flex;gap:8px;justify-content:center;margin-top:10px}
+  .btn {padding:8px 12px;border-radius:8px;background:var(--accent);border:none;color:#051025;cursor:pointer;font-weight:700}
+  .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,.06);color:var(--white)}
+  .pin-display {letter-spacing:6px;font-size:18px;margin-top:6px;margin-bottom:6px;color:#e6f1ff}
+  .muted-note{color:var(--muted);font-size:12px;margin-top:8px}
+
+  /* make page content unscrollable visually while overlay shown */
+  body.locked {overflow:hidden; touch-action:none; -webkit-user-select:none; user-select:none;}
+  /* small footer hints */
+  .hint {font-size:12px;color:var(--muted);margin-top:10px}
 </style>
 </head>
 <body>
 
-<div class="container">
-  <h1>🔒 Akses Dikunci</h1>
-  <p>Masukkan PIN atau tunggu <span id="timer">10</span> detik</p>
-  <div class="keypad" id="keypad">
-    <button onclick="pressNum(1)">1</button>
-    <button onclick="pressNum(2)">2</button>
-    <button onclick="pressNum(3)">3</button>
-    <button onclick="pressNum(4)">4</button>
-    <button onclick="pressNum(5)">5</button>
-    <button onclick="pressNum(6)">6</button>
-    <button onclick="pressNum(7)">7</button>
-    <button onclick="pressNum(8)">8</button>
-    <button onclick="pressNum(9)">9</button>
-    <button onclick="pressNum(0)">0</button>
-    <button onclick="clearPin()">❌</button>
-    <button onclick="submitPin()">✅</button>
+<!-- your regular page content (left untouched) -->
+<div class="content">
+  <h1>Demo Halaman</h1>
+  <p>Ini adalah halaman biasa. Jika script prank dijalankan, overlay akan muncul — namun pengguna selalu bisa menutup tab/browser untuk keluar. (Prank ini TIDAK merusak file).</p>
+  <p>Gunakan untuk edukasi atau bercanda secara bertanggung jawab.</p>
+</div>
+
+<!-- LOCK OVERLAY (starts hidden or can be shown immediately) -->
+<div id="lockOverlay" class="lock-overlay" aria-hidden="true" style="display:none">
+  <div class="panel" role="dialog" aria-modal="true" aria-label="Layar Terkunci">
+    <h2>⚠️ Perangkat Terkunci Sementara</h2>
+    <div class="sub">Halaman ini dikunci. Masukkan PIN atau tunggu sampai waktu habis untuk membuka.</div>
+    <div class="count" id="countdown">05:00</div>
+    <div class="pin-display" id="pinDisplay">• • • • •</div>
+
+    <div class="keypad" id="keypad">
+      <!-- digits -->
+      <button class="key" data-key="1">1</button>
+      <button class="key" data-key="2">2</button>
+      <button class="key" data-key="3">3</button>
+      <button class="key" data-key="4">4</button>
+      <button class="key" data-key="5">5</button>
+      <button class="key" data-key="6">6</button>
+      <button class="key" data-key="7">7</button>
+      <button class="key" data-key="8">8</button>
+      <button class="key" data-key="9">9</button>
+      <button class="key" data-key="0">0</button>
+      <button class="key" id="clearKey">CLR</button>
+      <button class="key" id="okKey">ENT</button>
+    </div>
+
+    <div class="actions">
+      <button class="btn ghost" id="showHelp">Cara Keluar</button>
+      <button class="btn" id="forceUnlock" style="display:none">ADMIN UNLOCK</button>
+    </div>
+
+    <div class="muted-note">Note: Ini prank aman — <strong>tidak</strong> merusak file. Untuk keluar, tekan tombol "Cara Keluar" atau tutup tab.</div>
+    <div class="hint">Default durasi: 5 menit. PIN bypass diset di script.</div>
   </div>
 </div>
 
 <script>
-  const PIN_BYPASS = "1234"; // PIN khusus
-  let enteredPin = "";
-  let locked = true;
-  let countdown = 10;
+/*
+  SAFE PRANK LOCK
+  - Tidak menyentuh file/perangkat
+  - Pengguna selalu dapat menutup tab/browser untuk keluar
+  - Script hanya mengunci interaksi DI HALAMAN (DOM overlay)
+  - Default duration: 5 minutes (customizable below)
+*/
 
-  // Cegah klik kanan & shortcut
-  document.addEventListener("contextmenu", e => e.preventDefault());
-  document.addEventListener("keydown", function(e) {
-    if (locked) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }, true);
+// =========== CONFIG ===========
+const PIN_BYPASS = "2580";        // ubah PIN sesuai keinginan
+const DEFAULT_SECONDS = 5 * 60;   // 5 menit = 300 detik
+const AUTO_SHOW_ON_LOAD = true;   // true => overlay muncul otomatis saat halaman dibuka
+// ==============================
 
-  // Cegah scroll
-  window.addEventListener("scroll", function() {
-    if (locked) window.scrollTo(0, 0);
-  });
+let remaining = DEFAULT_SECONDS;
+let countdownTimer = null;
+let pinEntry = "";
+const overlay = document.getElementById("lockOverlay");
+const countdownEl = document.getElementById("countdown");
+const pinDisplay = document.getElementById("pinDisplay");
+const keypad = document.getElementById("keypad");
+const clearKey = document.getElementById("clearKey");
+const okKey = document.getElementById("okKey");
+const showHelp = document.getElementById("showHelp");
+const forceUnlock = document.getElementById("forceUnlock");
 
-  // Timer otomatis unlock
-  const timerEl = document.getElementById("timer");
-  const interval = setInterval(() => {
-    countdown--;
-    timerEl.textContent = countdown;
-    if (countdown <= 0) {
-      unlock();
+// helpers
+function formatMMSS(sec){
+  const m = Math.floor(sec/60).toString().padStart(2,"0");
+  const s = (sec%60).toString().padStart(2,"0");
+  return `${m}:${s}`;
+}
+function updatePinDisplay(){
+  if(pinEntry.length === 0) pinDisplay.textContent = "• • • • •";
+  else {
+    // show bullets equal to length (max 10)
+    const bullets = Array.from({length: Math.min(10,pinEntry.length)}, ()=>"•").join(" ");
+    pinDisplay.textContent = bullets;
+  }
+}
+
+// lock interactions on page (only inside page, not OS)
+function enablePageLock(){
+  document.body.classList.add("locked");
+  overlay.style.display = "flex";
+  overlay.setAttribute("aria-hidden","false");
+  // block context menu
+  document.addEventListener("contextmenu", _ctxPrevent, {passive:false});
+  // block most keydowns inside page (note: browser/window close keys still work)
+  document.addEventListener("keydown", keydownHandler, true);
+  // prevent scroll by capturing wheel & touchmove
+  document.addEventListener("wheel", wheelPrevent, {passive:false});
+  document.addEventListener("touchmove", wheelPrevent, {passive:false});
+  // focus overlay
+  try { overlay.querySelector(".panel").focus(); } catch(e){}
+  startCountdown();
+}
+function disablePageLock(){
+  document.body.classList.remove("locked");
+  overlay.style.display = "none";
+  overlay.setAttribute("aria-hidden","true");
+  document.removeEventListener("contextmenu", _ctxPrevent, {passive:false});
+  document.removeEventListener("keydown", keydownHandler, true);
+  document.removeEventListener("wheel", wheelPrevent, {passive:false});
+  document.removeEventListener("touchmove", wheelPrevent, {passive:false});
+  stopCountdown();
+  pinEntry = "";
+  updatePinDisplay();
+}
+
+// minimal prevent handlers
+function _ctxPrevent(e){ e.preventDefault(); }
+function wheelPrevent(e){ e.preventDefault(); }
+function keydownHandler(e){
+  // Allow some safe keys like F12 to open devtools (we won't block OS-level close)
+  // But we prevent navigation keys and common shortcuts to keep the prank within page
+  const blocked = [
+    "F5", "F11", // refresh/fullscreen
+    "ArrowUp","ArrowDown","PageUp","PageDown","Home","End"
+  ];
+  // common ctrl/cmd combos to be cautious about
+  if(e.ctrlKey || e.metaKey){
+    const blockedCtrl = ["r","R","w","W","t","T","n","N","Tab","Shift"];
+    if(blockedCtrl.includes(e.key)) { e.preventDefault(); e.stopPropagation(); return; }
+  }
+  if(blocked.includes(e.key)) { e.preventDefault(); e.stopPropagation(); return; }
+  // prevent plain Escape from closing any modal we made - but allow it to exit if not locked
+  if(e.key === "Escape" && overlay.style.display === "flex") { e.preventDefault(); e.stopPropagation(); return; }
+}
+
+// countdown logic
+function startCountdown(){
+  if(countdownTimer) clearInterval(countdownTimer);
+  countdownEl.textContent = formatMMSS(remaining);
+  countdownTimer = setInterval(()=>{
+    remaining--;
+    countdownEl.textContent = formatMMSS(remaining);
+    if(remaining <= 0){
+      // auto unlock
+      disablePageLock();
+      alert("Waktu habis — layar dibuka kembali.");
     }
   }, 1000);
+}
+function stopCountdown(){
+  if(countdownTimer) clearInterval(countdownTimer);
+  countdownTimer = null;
+}
 
-  function pressNum(num) {
-    if (!locked) return;
-    enteredPin += num;
+// keypad handling
+keypad.addEventListener("click", (ev)=>{
+  const btn = ev.target.closest("button");
+  if(!btn) return;
+  const key = btn.dataset.key;
+  if(key !== undefined){
+    // numeric key pressed
+    if(pinEntry.length < 10) pinEntry += key;
+    updatePinDisplay();
+    return;
   }
+});
+clearKey.addEventListener("click", ()=>{ pinEntry = ""; updatePinDisplay(); });
+okKey.addEventListener("click", ()=>{ 
+  if(pinEntry === PIN_BYPASS){
+    disablePageLock();
+    alert("PIN benar — layar dibuka.");
+  } else {
+    // wrong PIN feedback (no destructive action)
+    pinEntry = "";
+    updatePinDisplay();
+    flashPanel();
+  }
+});
 
-  function clearPin() {
-    enteredPin = "";
-  }
+// brief visual flash on wrong PIN
+function flashPanel(){
+  const p = overlay.querySelector(".panel");
+  if(!p) return;
+  p.style.transition = "transform .08s";
+  p.style.transform = "translateX(-8px)";
+  setTimeout(()=> p.style.transform = "translateX(8px)", 80);
+  setTimeout(()=> p.style.transform = "translateX(0)", 160);
+}
 
-  function submitPin() {
-    if (enteredPin === PIN_BYPASS) {
-      unlock();
-    } else {
-      enteredPin = "";
-      alert("PIN salah!");
-    }
-  }
+// help button - show simple instructions (keamanan & how to exit)
+showHelp.addEventListener("click", ()=>{
+  alert("Prank aman: tutup tab/browser untuk keluar instan. Atau masukkan PIN yang benar. Jika ini halaman kamu, gunakan tombol ADMIN UNLOCK (di dev console) untuk buka.");
+});
 
-  function unlock() {
-    locked = false;
-    clearInterval(interval);
-    timerEl.textContent = "0";
-    alert("✅ Akses dibuka");
+// expose a simple admin unlock via console (for demo only)
+forceUnlock.style.display = "none";
+window.__adminUnlock = function(){ disablePageLock(); console.log("[admin] unlocked via console"); };
+
+// On load: optionally auto-show lock
+window.addEventListener("load", ()=>{
+  if(AUTO_SHOW_ON_LOAD){
+    // small delay to allow page render
+    setTimeout(()=>{
+      remaining = DEFAULT_SECONDS;
+      updatePinDisplay();
+      enablePageLock();
+    }, 250);
   }
+});
+
+// NOTE: This script purposely does NOT attempt to block OS/browser-level actions
+// (closing tab, switching apps, killing process). Users can always exit by closing the tab/window.
 </script>
 
 </body>
-</html>
+        </html>
