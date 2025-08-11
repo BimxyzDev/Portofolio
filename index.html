@@ -1,152 +1,127 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <title>🚨 SISTEM TERKEPUNG</title>
-  <meta charset="UTF-8" />
-  <style>
-    * { user-select: none; }
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: black;
-      color: lime;
-      font-family: monospace;
-      overflow: hidden;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-    }
-    input {
-      font-size: 18px;
-      padding: 10px;
-      background: #111;
-      color: lime;
-      border: none;
-      border-radius: 4px;
-      margin-top: 20px;
-      outline: none;
-    }
-    input:disabled {
-      background: #333;
-    }
-    #freeze {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 9999;
-      background: rgba(0,0,0,0.95);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prank Lock Screen</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: white;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  .container {
+    margin-top: 50px;
+  }
+  h1 {
+    color: #ff4444;
+  }
+  .keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 80px);
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+  }
+  .keypad button {
+    background: #333;
+    color: white;
+    font-size: 24px;
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .keypad button:hover {
+    background: #555;
+  }
+  #timer {
+    font-size: 20px;
+    margin-top: 15px;
+    color: #0f0;
+  }
+</style>
 </head>
 <body>
-  <div id="freeze">
-    <h1>🛑 SISTEM TERKEPUNG</h1>
-    <p id="info">Tunggu 15 detik atau masukkan kode rahasia untuk keluar...</p>
-    <input type="text" id="kode" placeholder="Masukkan kode" autofocus />
+
+<div class="container">
+  <h1>🔒 Akses Dikunci</h1>
+  <p>Masukkan PIN atau tunggu <span id="timer">10</span> detik</p>
+  <div class="keypad" id="keypad">
+    <button onclick="pressNum(1)">1</button>
+    <button onclick="pressNum(2)">2</button>
+    <button onclick="pressNum(3)">3</button>
+    <button onclick="pressNum(4)">4</button>
+    <button onclick="pressNum(5)">5</button>
+    <button onclick="pressNum(6)">6</button>
+    <button onclick="pressNum(7)">7</button>
+    <button onclick="pressNum(8)">8</button>
+    <button onclick="pressNum(9)">9</button>
+    <button onclick="pressNum(0)">0</button>
+    <button onclick="clearPin()">❌</button>
+    <button onclick="submitPin()">✅</button>
   </div>
+</div>
 
-  <audio id="sirine" loop>
-    <source src="https://www.soundjay.com/misc/sounds/emergency-buzzer-1.mp3" type="audio/mpeg" />
-  </audio>
+<script>
+  const PIN_BYPASS = "1234"; // PIN khusus
+  let enteredPin = "";
+  let locked = true;
+  let countdown = 10;
 
-  <script>
-    const kodeRahasia = "buka";
-    let isLocked = true;
-    let timer = 15;
-    const input = document.getElementById("kode");
-    const info = document.getElementById("info");
-    const sirine = document.getElementById("sirine");
-
-    // LOOP SPAM history supaya back gagal
-    for (let i = 0; i < 50; i++) history.pushState(null, "", location.href);
-    window.onpopstate = () => {
-      if (isLocked) history.pushState(null, "", location.href);
-    };
-
-    // Cegah reload & close tab
-    window.onbeforeunload = () => isLocked ? "Tunggu sistem terbuka!" : null;
-
-    // Cegah shortcut keyboard
-    document.addEventListener("keydown", e => {
-      if (isLocked && e.target !== input) e.preventDefault();
-
-      if (
-        ["F1","F5","F12","Escape"].includes(e.key) ||
-        (e.ctrlKey && ["r","w","s","p","u"].includes(e.key.toLowerCase()))
-      ) {
-        if (isLocked) e.preventDefault();
-      }
-    });
-
-    // Cegah klik kanan
-    document.addEventListener("contextmenu", e => isLocked && e.preventDefault());
-
-    // Auto fullscreen pas klik/touch
-    const fs = () => {
-      const el = document.documentElement;
-      if (el.requestFullscreen) el.requestFullscreen();
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-      else if (el.msRequestFullscreen) el.msRequestFullscreen();
-    };
-    document.addEventListener("click", fs, { once: true });
-    document.addEventListener("touchstart", fs, { once: true });
-
-    // Vibrasi loop
-    const vibrateInterval = setInterval(() => {
-      if (navigator.vibrate && isLocked) navigator.vibrate([200]);
-    }, 1000);
-
-    // Sirine
-    setTimeout(() => {
-      sirine.play().catch(() => {
-        info.textContent += " (tap layar dulu buat aktifkan audio)";
-      });
-    }, 500);
-
-    // Hitung mundur
-    const countdown = setInterval(() => {
-      if (!isLocked) return;
-      if (timer <= 0) {
-        unlock();
-      } else {
-        info.textContent = `⏳ Tunggu ${timer} detik atau masukkan kode...`;
-        timer--;
-      }
-    }, 1000);
-
-    // Kode rahasia
-    input.addEventListener("input", () => {
-      if (input.value.trim().toLowerCase() === kodeRahasia.toLowerCase()) unlock();
-    });
-
-    // Fake freeze (loop blocking dummy)
-    const freezeCPU = () => {
-      let x = 0;
-      const limit = Date.now() + 2000;
-      while (Date.now() < limit) { x += Math.random(); }
-      requestAnimationFrame(freezeCPU);
-    };
-    freezeCPU(); // bikin device berat
-
-    // UNLOCK
-    function unlock() {
-      isLocked = false;
-      clearInterval(countdown);
-      clearInterval(vibrateInterval);
-      sirine.pause();
-      sirine.currentTime = 0;
-      window.onbeforeunload = null;
-
-      document.getElementById("freeze").remove();
-      alert("✅ Sistem telah dibuka. Lu selamat bro.");
+  // Cegah klik kanan & shortcut
+  document.addEventListener("contextmenu", e => e.preventDefault());
+  document.addEventListener("keydown", function(e) {
+    if (locked) {
+      e.preventDefault();
+      e.stopPropagation();
     }
-  </script>
+  }, true);
+
+  // Cegah scroll
+  window.addEventListener("scroll", function() {
+    if (locked) window.scrollTo(0, 0);
+  });
+
+  // Timer otomatis unlock
+  const timerEl = document.getElementById("timer");
+  const interval = setInterval(() => {
+    countdown--;
+    timerEl.textContent = countdown;
+    if (countdown <= 0) {
+      unlock();
+    }
+  }, 1000);
+
+  function pressNum(num) {
+    if (!locked) return;
+    enteredPin += num;
+  }
+
+  function clearPin() {
+    enteredPin = "";
+  }
+
+  function submitPin() {
+    if (enteredPin === PIN_BYPASS) {
+      unlock();
+    } else {
+      enteredPin = "";
+      alert("PIN salah!");
+    }
+  }
+
+  function unlock() {
+    locked = false;
+    clearInterval(interval);
+    timerEl.textContent = "0";
+    alert("✅ Akses dibuka");
+  }
+</script>
+
 </body>
 </html>
